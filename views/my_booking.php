@@ -1097,36 +1097,57 @@
             }
 
             // ĐỔI MÀU GIAO DIỆN MÀ KHÔNG CẦN F5
+            // ĐỔI MÀU GIAO DIỆN MÀ KHÔNG CẦN F5
             if (bId) {
                 let badge = document.getElementById("badge-" + bId);
 
                 if (badge) {
                     let typeName = data.type || '';
+                    let messageStr = data.message || '';
                     let bookingCard = badge.closest('.booking-card');
 
-                    // KỊCH BẢN 1: DUYỆT ĐƠN / THANH TOÁN
-                    if (typeName.includes('Xác Nhận') || typeName.includes('Thanh Toán') || typeName.includes('success')) {
+                    // Phân loại sự kiện
+                    let isPaymentEvent = typeName.includes('Thanh Toán') || typeName.includes('success') || messageStr.toLowerCase().includes('thanh toán');
+                    let isConfirmEvent = typeName.includes('Xác Nhận') || typeName.includes('Duyệt');
+                    let isCancelEvent = typeName.includes('Hủy') || typeName.includes('error');
+
+                    // ==========================================
+                    // KỊCH BẢN 1: DUYỆT ĐƠN HÀNG (Chỉ xác nhận đơn)
+                    // ==========================================
+                    if (isConfirmEvent || isPaymentEvent) {
+                        // Dù là duyệt đơn hay thanh toán, đơn hàng đều chuyển sang trạng thái "Đã xác nhận"
                         badge.className = "status-badge badge-confirmed";
                         badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Đã xác nhận';
 
+                        // Ẩn nút hủy đi (tùy logic của bạn, nếu duyệt rồi không cho hủy)
+                        let cancelBtn = bookingCard.querySelector('.btn-cancel');
+                        if (cancelBtn) cancelBtn.remove();
+                    }
+
+                    // ==========================================
+                    // KỊCH BẢN 2: ĐÃ NHẬN TIỀN (Thanh toán thành công)
+                    // ==========================================
+                    if (isPaymentEvent) {
                         let payStatusDiv = bookingCard.querySelector('.pay-status');
                         if (payStatusDiv) {
                             payStatusDiv.className = "pay-status pay-paid";
                             payStatusDiv.innerHTML = '<i class="bi bi-shield-check me-1"></i> Đã thanh toán';
                         }
 
+                        // Nhận tiền rồi thì xóa nút "Thanh toán ngay"
                         let payBtn = bookingCard.querySelector('.btn-payment');
                         if (payBtn) payBtn.remove();
-                        let cancelBtn = bookingCard.querySelector('.btn-cancel');
-                        if (cancelBtn) cancelBtn.remove();
                     }
 
-                    // KỊCH BẢN 2: HỦY ĐƠN HÀNG
-                    else if (typeName.includes('Hủy') || typeName.includes('error')) {
+                    // ==========================================
+                    // KỊCH BẢN 3: HỦY ĐƠN HÀNG
+                    // ==========================================
+                    if (isCancelEvent) {
                         badge.className = "status-badge badge-cancelled";
                         badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Đã hủy';
 
                         let payStatusDiv = bookingCard.querySelector('.pay-status');
+                        // Nếu trước đó đã thanh toán, chuyển sang Đang hoàn tiền
                         if (payStatusDiv && payStatusDiv.classList.contains('pay-paid')) {
                             payStatusDiv.className = "pay-status pay-processing";
                             payStatusDiv.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Đang xử lý hoàn tiền';
