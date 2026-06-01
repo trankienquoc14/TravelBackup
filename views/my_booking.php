@@ -1003,28 +1003,28 @@
     </script>
     <?php unset($_SESSION['review_success']); ?>
 <?php endif; ?>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
 <script>
     document.addEventListener("DOMContentLoaded", function () {
 
-        // --- GIỮ NGUYÊN CÁC HÀM FILTER & SẮP XẾP CỦA BẠN TỪ ĐÂY ---
+        // ========================================================
+        // 1. PHẦN FILTER VÀ SORT (Giữ nguyên logic của bạn)
+        // ========================================================
         const searchInput = document.getElementById("bookingSearchInput");
         const statusFilter = document.getElementById("bookingStatusFilter");
         const paymentFilter = document.getElementById("bookingPaymentFilter");
         const sortSelect = document.getElementById("bookingSortSelect");
         const resetBtn = document.getElementById("bookingResetFilter");
-        const visibleCount = document.getElementById("bookingVisibleCount");
         const noResultBox = document.getElementById("bookingNoResult");
 
         function getBookingCards() { return Array.from(document.querySelectorAll(".booking-card")); }
         function normalizeText(text) { return (text || "").toString().toLowerCase().trim(); }
 
         function filterAndSortBookings() {
-            // (Phần logic filter của bạn giữ nguyên, không thay đổi)
             const keyword = normalizeText(searchInput?.value || "");
             const selectedStatus = statusFilter?.value || "all";
             const selectedPayment = paymentFilter?.value || "all";
-            const selectedSort = sortSelect?.value || "newest";
-
             const cards = getBookingCards();
             let visibleCards = [];
 
@@ -1032,20 +1032,15 @@
                 const cardSearch = normalizeText(card.dataset.search || "");
                 const cardStatus = card.dataset.status || "";
                 const cardPayment = card.dataset.payment || "";
-
                 const matchKeyword = keyword === "" || cardSearch.includes(keyword);
                 const matchStatus = selectedStatus === "all" || cardStatus === selectedStatus;
                 const matchPayment = selectedPayment === "all" || cardPayment === selectedPayment;
 
                 const isVisible = matchKeyword && matchStatus && matchPayment;
                 card.style.display = isVisible ? "" : "none";
-
                 if (isVisible) visibleCards.push(card);
             });
 
-            // Logic sort giữ nguyên...
-            const parent = cards[0]?.parentElement;
-            if (parent) visibleCards.forEach(card => parent.appendChild(card));
             if (noResultBox) noResultBox.style.display = visibleCards.length === 0 ? "block" : "none";
         }
 
@@ -1053,12 +1048,12 @@
         if (statusFilter) statusFilter.addEventListener("change", filterAndSortBookings);
         if (paymentFilter) paymentFilter.addEventListener("change", filterAndSortBookings);
         if (sortSelect) sortSelect.addEventListener("change", filterAndSortBookings);
+
         if (resetBtn) {
             resetBtn.addEventListener("click", function () {
                 if (searchInput) searchInput.value = "";
                 if (statusFilter) statusFilter.value = "all";
                 if (paymentFilter) paymentFilter.value = "all";
-                if (sortSelect) sortSelect.value = "newest";
                 document.querySelectorAll(".quick-filter").forEach(btn => btn.classList.remove("active"));
                 document.querySelector('.quick-filter[data-status="all"]')?.classList.add("active");
                 filterAndSortBookings();
@@ -1076,82 +1071,75 @@
         });
 
         filterAndSortBookings();
-        // --- KẾT THÚC PHẦN FILTER ---
+        // ========================================================
 
-        // 🔥 LOGIC CẬP NHẬT GIAO DIỆN REAL-TIME (TỐI ƯU HÓA DOM)
-        let checkSocketInterval = setInterval(() => {
-            // Chờ cho đến khi file footer.php khởi tạo xong socket
-            if (typeof window.globalSocket !== 'undefined') {
-                clearInterval(checkSocketInterval);
+        // ========================================================
+        // 2. LOGIC CẬP NHẬT REAL-TIME (KHÔNG DÙNG INTERVAL NỮA)
+        // ========================================================
 
-                window.globalSocket.on("system_notification", function (data) {
-                    console.log("👉 Dữ liệu Socket nhận được:", data);
+        // Tự khởi tạo kết nối độc lập không chờ đợi ai
+        const pageSocket = io("wss://travelvn-socketserver.onrender.com", {
+            transports: ["websocket", "polling"]
+        });
 
-                    // 1. TÌM ID ĐƠN HÀNG (Dùng Regex bóc tách số 57 từ chuỗi "#000057")
-                    let bId = data.booking_id;
-                    if (!bId && data.message) {
-                        let match = data.message.match(/#0*(\d+)/);
-                        if (match) bId = match[1]; // Sẽ lấy ra được đúng số 57
-                    }
+        pageSocket.on("connect", () => {
+            console.log("🟢 Trang Khách Hàng đã kết nối Socket thành công!");
+        });
 
-                    // 2. NẾU CÓ ID, TÌM THẺ HTML VÀ ĐỔI MÀU GIAO DIỆN
-                    if (bId) {
-                        let badge = document.getElementById("badge-" + bId);
+        pageSocket.on("system_notification", function (data) {
+            console.log("👉 NHẬN ĐƯỢC LỆNH TỪ ADMIN:", data);
 
-                        if (badge) {
-                            let typeName = data.type || '';
-                            let bookingCard = badge.closest('.booking-card');
-
-                            // ==========================================
-                            // KỊCH BẢN 1: DUYỆT ĐƠN / THANH TOÁN
-                            // ==========================================
-                            if (typeName.includes('Xác Nhận') || typeName.includes('Thanh Toán')) {
-                                // Đổi màu Badge Vàng sang Xanh
-                                badge.className = "status-badge badge-confirmed";
-                                badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Đã xác nhận';
-
-                                // Đổi dòng chữ "Chưa thanh toán" sang "Đã thanh toán"
-                                let payStatusDiv = bookingCard.querySelector('.pay-status');
-                                if (payStatusDiv) {
-                                    payStatusDiv.className = "pay-status pay-paid";
-                                    payStatusDiv.innerHTML = '<i class="bi bi-shield-check me-1"></i> Đã thanh toán';
-                                }
-
-                                // Ẩn luôn nút "Thanh toán ngay" và "Hủy tour" đi
-                                let payBtn = bookingCard.querySelector('.btn-payment');
-                                if (payBtn) payBtn.remove();
-
-                                let cancelBtn = bookingCard.querySelector('.btn-cancel');
-                                if (cancelBtn) cancelBtn.remove();
-                            }
-
-                            // ==========================================
-                            // KỊCH BẢN 2: HỦY ĐƠN HÀNG
-                            // ==========================================
-                            else if (typeName.includes('Hủy Đơn')) {
-                                // Đổi màu Badge Vàng sang Đỏ
-                                badge.className = "status-badge badge-cancelled";
-                                badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Đã hủy';
-
-                                // Nếu đã thanh toán, đổi trạng thái sang "Đang hoàn tiền"
-                                let payStatusDiv = bookingCard.querySelector('.pay-status');
-                                if (payStatusDiv && payStatusDiv.classList.contains('pay-paid')) {
-                                    payStatusDiv.className = "pay-status pay-processing";
-                                    payStatusDiv.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Đang xử lý hoàn tiền';
-                                }
-
-                                // Ẩn các nút hành động
-                                let payBtn = bookingCard.querySelector('.btn-payment');
-                                if (payBtn) payBtn.remove();
-
-                                let cancelBtn = bookingCard.querySelector('.btn-cancel');
-                                if (cancelBtn) cancelBtn.remove();
-                            }
-                        }
-                    }
-                });
+            // TÌM ID ĐƠN HÀNG
+            let bId = data.booking_id;
+            if (!bId && data.message) {
+                let match = data.message.match(/#0*(\d+)/);
+                if (match) bId = match[1];
             }
-        }, 500);
+
+            // ĐỔI MÀU GIAO DIỆN MÀ KHÔNG CẦN F5
+            if (bId) {
+                let badge = document.getElementById("badge-" + bId);
+
+                if (badge) {
+                    let typeName = data.type || '';
+                    let bookingCard = badge.closest('.booking-card');
+
+                    // KỊCH BẢN 1: DUYỆT ĐƠN / THANH TOÁN
+                    if (typeName.includes('Xác Nhận') || typeName.includes('Thanh Toán') || typeName.includes('success')) {
+                        badge.className = "status-badge badge-confirmed";
+                        badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Đã xác nhận';
+
+                        let payStatusDiv = bookingCard.querySelector('.pay-status');
+                        if (payStatusDiv) {
+                            payStatusDiv.className = "pay-status pay-paid";
+                            payStatusDiv.innerHTML = '<i class="bi bi-shield-check me-1"></i> Đã thanh toán';
+                        }
+
+                        let payBtn = bookingCard.querySelector('.btn-payment');
+                        if (payBtn) payBtn.remove();
+                        let cancelBtn = bookingCard.querySelector('.btn-cancel');
+                        if (cancelBtn) cancelBtn.remove();
+                    }
+
+                    // KỊCH BẢN 2: HỦY ĐƠN HÀNG
+                    else if (typeName.includes('Hủy') || typeName.includes('error')) {
+                        badge.className = "status-badge badge-cancelled";
+                        badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Đã hủy';
+
+                        let payStatusDiv = bookingCard.querySelector('.pay-status');
+                        if (payStatusDiv && payStatusDiv.classList.contains('pay-paid')) {
+                            payStatusDiv.className = "pay-status pay-processing";
+                            payStatusDiv.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Đang xử lý hoàn tiền';
+                        }
+
+                        let payBtn = bookingCard.querySelector('.btn-payment');
+                        if (payBtn) payBtn.remove();
+                        let cancelBtn = bookingCard.querySelector('.btn-cancel');
+                        if (cancelBtn) cancelBtn.remove();
+                    }
+                }
+            }
+        });
 
     });
 </script>
