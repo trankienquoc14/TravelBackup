@@ -465,7 +465,8 @@ $imgUrl = !empty($departure['image']) ? '/uploads/' . $departure['image'] : 'htt
             <div class="stat-card">
                 <div class="stat-header-flex">
                     <div class="stat-icon" style="background: var(--app-primary-bg); color: var(--app-primary);">
-                        <?= $progress ?>%</div>
+                        <?= $progress ?>%
+                    </div>
                     <div class="stat-info">
                         <h6>Tiến độ điểm danh</h6>
                         <h4><span id="checkedInPax"><?= $checkedInPax ?></span> / <span
@@ -924,6 +925,7 @@ $imgUrl = !empty($departure['image']) ? '/uploads/' . $departure['image'] : 'htt
 </script>
 
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         // =========================
@@ -931,7 +933,140 @@ $imgUrl = !empty($departure['image']) ? '/uploads/' . $departure['image'] : 'htt
         // (Phần xử lý checkin QR code)
         // =========================
 
-        // ... [GIỮ NGUYÊN CODE PUSHER & AJAX CHECKIN CỦA BẠN] ...
+        var pusher = new Pusher('e5405b1b2139fed6f8bc', {
+            cluster: 'ap1'
+        });
+
+        var departureChannel = pusher.subscribe(
+            'departure-channel-<?= $departure['departure_id'] ?>'
+        );
+
+        departureChannel.bind('new-checkin', function (data) {
+
+            let checkedInEl = document.getElementById('checkedInPax');
+            let totalEl = document.getElementById('totalPax');
+
+            let currentChecked = parseInt(checkedInEl.innerText);
+            let paxAdded = parseInt(data.pax_added);
+
+            let newChecked = currentChecked + paxAdded;
+
+            checkedInEl.innerText = newChecked;
+
+            let total = parseInt(totalEl.innerText);
+
+            let newPercent = Math.round((newChecked / total) * 100);
+
+            document.querySelector('.progress-bar-fill-custom')
+                .style.width = newPercent + '%';
+
+            document.querySelector('.stat-icon')
+                .innerText = newPercent + '%';
+
+            // =========================
+            // UPDATE ROW
+            // =========================
+            let row = document.getElementById(
+                'row-booking-' + data.booking_id
+            );
+
+            if (row) {
+
+                row.querySelector('.status-column').innerHTML = `
+                <span class="status-pill pill-success">
+                    <i class="bi bi-check-circle-fill"></i>
+                    Có mặt
+                </span>
+
+                <div class="text-muted small mt-1 fw-bold">
+                    ${data.time}
+                </div>
+            `;
+
+                row.querySelector('.action-column').innerHTML = `
+                <span class="text-muted fst-italic small d-flex align-items-center justify-content-center">
+                    <i class="bi bi-check2-all text-success fs-5"></i>
+                </span>
+            `;
+            }
+        });
+
+        // =========================
+        // AJAX CHECKIN BUTTON
+        // =========================
+        document.querySelectorAll('.form-checkin').forEach(form => {
+
+            form.addEventListener('submit', function (e) {
+
+                e.preventDefault();
+
+                let formData = new FormData(this);
+
+                let btn = this.querySelector('button');
+
+                let oldHtml = btn.innerHTML;
+
+                btn.disabled = true;
+
+                btn.innerHTML = `
+                <span class="spinner-border spinner-border-sm"></span>
+            `;
+
+                fetch('guide.php?action=checkin', {
+                    method: 'POST',
+
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+
+                    body: formData
+                })
+
+                    .then(res => res.json())
+
+                    .then(data => {
+
+                        if (data.status === 'success') {
+
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'success',
+                                title: data.message,
+                                showConfirmButton: false,
+                                timer: 2000
+                            });
+
+                        } else {
+
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Lỗi',
+                                text: data.message
+                            });
+
+                            btn.disabled = false;
+
+                            btn.innerHTML = oldHtml;
+                        }
+                    })
+
+                    .catch(err => {
+
+                        console.error(err);
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Lỗi server',
+                            text: 'Không thể kết nối tới máy chủ'
+                        });
+
+                        btn.disabled = false;
+
+                        btn.innerHTML = oldHtml;
+                    });
+            });
+        });
 
         // =========================================================
         // THÊM MỚI: LOGIC LẮNG NGHE REAL-TIME & CẬP NHẬT NGẦM DANH SÁCH (AJAX)
