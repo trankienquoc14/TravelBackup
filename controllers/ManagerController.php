@@ -155,55 +155,55 @@ class ManagerController
     }
 
     public function deleteTour()
-{
-    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    {
+        $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
-    if ($id <= 0) {
-        $_SESSION['error'] = "Tour không hợp lệ!";
-        header("Location: manager.php?action=tours");
-        exit;
-    }
+        if ($id <= 0) {
+            $_SESSION['error'] = "Tour không hợp lệ!";
+            header("Location: manager.php?action=tours");
+            exit;
+        }
 
-    // Kiểm tra tour có lịch khởi hành chưa
-    $checkDeparture = $this->db->prepare("
+        // Kiểm tra tour có lịch khởi hành chưa
+        $checkDeparture = $this->db->prepare("
         SELECT COUNT(*) 
         FROM departures 
         WHERE tour_id = ? 
         AND status != 'cancelled'
     ");
-    $checkDeparture->execute([$id]);
+        $checkDeparture->execute([$id]);
 
-    if ($checkDeparture->fetchColumn() > 0) {
-        $_SESSION['error'] = "Không thể xóa tour này vì tour đang có lịch khởi hành.";
+        if ($checkDeparture->fetchColumn() > 0) {
+            $_SESSION['error'] = "Không thể xóa tour này vì tour đang có lịch khởi hành.";
+            header("Location: manager.php?action=tours");
+            exit;
+        }
+
+        // Lấy ảnh tour
+        $stmt = $this->db->prepare("SELECT image FROM tours WHERE tour_id=?");
+        $stmt->execute([$id]);
+        $tour = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$tour) {
+            $_SESSION['error'] = "Không tìm thấy tour cần xóa!";
+            header("Location: manager.php?action=tours");
+            exit;
+        }
+
+        // Xóa ảnh nếu có
+        $path = __DIR__ . '/../public/uploads/';
+        if (!empty($tour['image']) && file_exists($path . $tour['image'])) {
+            unlink($path . $tour['image']);
+        }
+
+        // Xóa tour
+        $stmt = $this->db->prepare("DELETE FROM tours WHERE tour_id=?");
+        $stmt->execute([$id]);
+
+        $_SESSION['success'] = "Đã xóa tour thành công!";
         header("Location: manager.php?action=tours");
         exit;
     }
-
-    // Lấy ảnh tour
-    $stmt = $this->db->prepare("SELECT image FROM tours WHERE tour_id=?");
-    $stmt->execute([$id]);
-    $tour = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$tour) {
-        $_SESSION['error'] = "Không tìm thấy tour cần xóa!";
-        header("Location: manager.php?action=tours");
-        exit;
-    }
-
-    // Xóa ảnh nếu có
-    $path = __DIR__ . '/../public/uploads/';
-    if (!empty($tour['image']) && file_exists($path . $tour['image'])) {
-        unlink($path . $tour['image']);
-    }
-
-    // Xóa tour
-    $stmt = $this->db->prepare("DELETE FROM tours WHERE tour_id=?");
-    $stmt->execute([$id]);
-
-    $_SESSION['success'] = "Đã xóa tour thành công!";
-    header("Location: manager.php?action=tours");
-    exit;
-}
 
     public function partners()
     {
@@ -375,23 +375,23 @@ class ManagerController
         try {
             $this->db->beginTransaction();
 
-           $realStatus = $this->getRealDepartureStatus($start_date, $end_date);
+            $realStatus = $this->getRealDepartureStatus($start_date, $end_date);
 
-$stmt = $this->db->prepare("
+            $stmt = $this->db->prepare("
     INSERT INTO departures 
     (tour_id, start_date, end_date, max_seats, available_seats, booked_seats, status) 
     VALUES (?, ?, ?, ?, ?, 0, ?)
 ");
-        
+
 
             $stmt->execute([
-    $tour_id,
-    $start_date,
-    $end_date,
-    $max_seats,
-    $max_seats,
-    $realStatus
-]);
+                $tour_id,
+                $start_date,
+                $end_date,
+                $max_seats,
+                $max_seats,
+                $realStatus
+            ]);
 
             $departure_id = $this->db->lastInsertId();
 
@@ -446,30 +446,30 @@ $stmt = $this->db->prepare("
         }
     }
     private function syncDepartureStatuses()
-{
-    date_default_timezone_set('Asia/Ho_Chi_Minh');
+    {
+        date_default_timezone_set('Asia/Ho_Chi_Minh');
 
-    $today = date('Y-m-d');
+        $today = date('Y-m-d');
 
-    // Chuyến đang diễn ra
-    $stmtOngoing = $this->db->prepare("
+        // Chuyến đang diễn ra
+        $stmtOngoing = $this->db->prepare("
         UPDATE departures
         SET status = 'ongoing'
         WHERE status NOT IN ('cancelled', 'completed')
         AND start_date <= ?
         AND end_date >= ?
     ");
-    $stmtOngoing->execute([$today, $today]);
+        $stmtOngoing->execute([$today, $today]);
 
-    // Chuyến đã hoàn thành
-    $stmtCompleted = $this->db->prepare("
+        // Chuyến đã hoàn thành
+        $stmtCompleted = $this->db->prepare("
         UPDATE departures
         SET status = 'completed'
         WHERE status != 'cancelled'
         AND end_date < ?
     ");
-    $stmtCompleted->execute([$today]);
-}
+        $stmtCompleted->execute([$today]);
+    }
     private function getRealDepartureStatus($startDate, $endDate)
     {
         date_default_timezone_set('Asia/Ho_Chi_Minh');
@@ -845,6 +845,14 @@ $stmt = $this->db->prepare("
                 }
 
                 $this->db->commit();
+                $_SESSION['realtime_notify'] = [
+                    'target_user_id' => $booking['user_id'],
+                    'type' => 'Thanh Toán', // Trùng khớp với Kịch bản 2 ở Javascript
+                    'title' => '💰 Đã thanh toán',
+                    'message' => "Đơn hàng #" . str_pad($id, 6, '0', STR_PAD_LEFT) . " đã được xác nhận thanh toán!",
+                    'booking_id' => $id,
+                    'is_silent' => false
+                ];
 
                 $customerName = htmlspecialchars($booking['customer_name'] ?? 'Khách hàng');
                 $_SESSION['success'] = "Đã xác nhận thu tiền mặt thành công đơn #{$id} của khách {$customerName}!";

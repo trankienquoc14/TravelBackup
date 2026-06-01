@@ -1120,8 +1120,8 @@
                         badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Đã xác nhận';
 
                         // Ẩn nút hủy đi (tùy logic của bạn, nếu duyệt rồi không cho hủy)
-                        let cancelBtn = bookingCard.querySelector('.btn-cancel');
-                        if (cancelBtn) cancelBtn.remove();
+                        // let cancelBtn = bookingCard.querySelector('.btn-cancel');
+                        // if (cancelBtn) cancelBtn.remove();
                     }
 
                     // ==========================================
