@@ -1107,9 +1107,9 @@
                     let bookingCard = badge.closest('.booking-card');
 
                     // Phân loại sự kiện
-                    let isPaymentEvent = typeName.includes('Thanh Toán') || messageStr.toLowerCase().includes('thanh toán');
-                    let isConfirmEvent = typeName.includes('Xác Nhận') || typeName.includes('Duyệt');
-                    let isCancelEvent = typeName.includes('Hủy') || typeName.includes('error');
+                    let isConfirmEvent = (typeName === 'Xác Nhận');
+                    let isPaymentEvent = (typeName === 'Thanh Toán');
+                    let isCancelEvent = (typeName === 'Hủy Đơn');
 
                     // ==========================================
                     // KỊCH BẢN 1: DUYỆT ĐƠN HÀNG (Chỉ xác nhận đơn)
