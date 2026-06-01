@@ -7,9 +7,9 @@ if (!empty($bookings)) {
     foreach ($bookings as $b) {
         $tourName = $b['tour_name'] ?? 'Tour không xác định';
         $startDate = $b['start_date'] ?? '';
-        
+
         $groupKey = md5($tourName . '_' . $startDate);
-        
+
         if (!isset($groupedBookings[$groupKey])) {
             $groupedBookings[$groupKey] = [
                 'tour_name' => $tourName,
@@ -19,16 +19,16 @@ if (!empty($bookings)) {
                 'items' => []
             ];
         }
-        
+
         $groupedBookings[$groupKey]['items'][] = $b;
         $groupedBookings[$groupKey]['total_bookings']++;
-        
+
         if ($b['status'] == 'confirmed' || $b['status'] == 'completed') {
             $groupedBookings[$groupKey]['total_revenue'] += $b['total_price'];
         }
     }
 }
-?>  
+?>
 
 <style>
     :root {
@@ -37,65 +37,237 @@ if (!empty($bookings)) {
         --admin-warning: #f59e0b;
         --admin-danger: #ef4444;
         --admin-info: #0ea5e9;
-        --admin-bg: #f1f5f9; 
+        --admin-bg: #f1f5f9;
         --admin-surface: #ffffff;
         --admin-border: #e2e8f0;
-        --admin-text-main: #0f172a; 
-        --admin-text-muted: #64748b; 
+        --admin-text-main: #0f172a;
+        --admin-text-muted: #64748b;
     }
 
-    body { background-color: var(--admin-bg); font-family: 'Inter', 'Segoe UI', sans-serif; }
-    .admin-container { max-width: 1400px; margin: 40px auto; padding: 0 15px; }
-    .admin-title { font-size: 1.8rem; font-weight: 800; color: var(--admin-text-main); margin-bottom: 5px; }
-    
+    body {
+        background-color: var(--admin-bg);
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+    }
+
+    .admin-container {
+        max-width: 1400px;
+        margin: 40px auto;
+        padding: 0 15px;
+    }
+
+    .admin-title {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--admin-text-main);
+        margin-bottom: 5px;
+    }
+
     .filter-card {
-        background: var(--admin-surface); border-radius: 16px; padding: 24px;
-        border: 1px solid var(--admin-border); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); margin-bottom: 24px;
+        background: var(--admin-surface);
+        border-radius: 16px;
+        padding: 24px;
+        border: 1px solid var(--admin-border);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        margin-bottom: 24px;
     }
-    
-    .filter-label { font-size: 0.85rem; font-weight: 700; color: var(--admin-text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .form-control, .form-select { border-radius: 10px; border-color: var(--admin-border); padding: 10px 15px; box-shadow: none !important; transition: 0.2s; }
-    .form-control:focus, .form-select:focus { border-color: var(--admin-primary); background-color: #f8fafc; }
-    .input-group-text { border-radius: 10px; background-color: white; border-color: var(--admin-border); color: var(--admin-text-muted); }
 
-    .tour-accordion .accordion-item { border: 1px solid var(--admin-border); border-radius: 16px !important; margin-bottom: 16px; background-color: white; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
-    .tour-accordion .accordion-button { padding: 20px 24px; background-color: white; color: var(--admin-text-main); box-shadow: none !important; }
-    .tour-accordion .accordion-button:not(.collapsed) { background-color: #f8fafc; border-bottom: 1px solid var(--admin-border); }
-    .tour-group-title { font-size: 1.1rem; font-weight: 800; color: var(--admin-text-main); display: flex; align-items: center; gap: 10px; }
-    .tour-group-meta { font-size: 0.9rem; color: var(--admin-text-muted); font-weight: 500; display: flex; gap: 20px; align-items: center; margin-top: 5px; }
-    
-    .table th { background-color: #f1f5f9; color: var(--admin-text-muted); font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; padding: 16px; border-bottom: none; white-space: nowrap; }
-    .table td { padding: 16px; vertical-align: middle; color: var(--admin-text-main); border-bottom: 1px solid var(--admin-border); }
-    .table tbody tr:last-child td { border-bottom: none; }
-    .table tbody tr:hover { background-color: #f8fafc; }
+    .filter-label {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--admin-text-muted);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
 
-    .badge-status { padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 0.75rem; display: inline-block; min-width: 90px; text-align: center; }
-    .status-pending { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
-    .status-confirmed { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
-    .status-cancelled { background: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; }
-    .status-refunded { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .form-control,
+    .form-select {
+        border-radius: 10px;
+        border-color: var(--admin-border);
+        padding: 10px 15px;
+        box-shadow: none !important;
+        transition: 0.2s;
+    }
 
-    .action-group { display: flex; gap: 8px; justify-content: center; }
-    .btn-icon { width: 34px; height: 34px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; border: none; transition: 0.2s; background: white; color: var(--admin-text-muted); text-decoration: none; border: 1px solid var(--admin-border); }
-    .btn-icon:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
-    .btn-icon-info:hover { border-color: var(--admin-info); color: var(--admin-info); background: #e0f2fe; }
-    .btn-icon-success:hover { border-color: var(--admin-success); color: var(--admin-success); background: #d1fae5; }
-    .btn-icon-warning:hover { border-color: var(--admin-warning); color: var(--admin-warning); background: #fef3c7; }
-    .btn-icon-danger:hover { border-color: var(--admin-danger); color: var(--admin-danger); background: #fee2e2; }
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--admin-primary);
+        background-color: #f8fafc;
+    }
+
+    .input-group-text {
+        border-radius: 10px;
+        background-color: white;
+        border-color: var(--admin-border);
+        color: var(--admin-text-muted);
+    }
+
+    .tour-accordion .accordion-item {
+        border: 1px solid var(--admin-border);
+        border-radius: 16px !important;
+        margin-bottom: 16px;
+        background-color: white;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+    }
+
+    .tour-accordion .accordion-button {
+        padding: 20px 24px;
+        background-color: white;
+        color: var(--admin-text-main);
+        box-shadow: none !important;
+    }
+
+    .tour-accordion .accordion-button:not(.collapsed) {
+        background-color: #f8fafc;
+        border-bottom: 1px solid var(--admin-border);
+    }
+
+    .tour-group-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--admin-text-main);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .tour-group-meta {
+        font-size: 0.9rem;
+        color: var(--admin-text-muted);
+        font-weight: 500;
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        margin-top: 5px;
+    }
+
+    .table th {
+        background-color: #f1f5f9;
+        color: var(--admin-text-muted);
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        padding: 16px;
+        border-bottom: none;
+        white-space: nowrap;
+    }
+
+    .table td {
+        padding: 16px;
+        vertical-align: middle;
+        color: var(--admin-text-main);
+        border-bottom: 1px solid var(--admin-border);
+    }
+
+    .table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    .badge-status {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 0.75rem;
+        display: inline-block;
+        min-width: 90px;
+        text-align: center;
+    }
+
+    .status-pending {
+        background: #fffbeb;
+        color: #d97706;
+        border: 1px solid #fde68a;
+    }
+
+    .status-confirmed {
+        background: #ecfdf5;
+        color: #059669;
+        border: 1px solid #a7f3d0;
+    }
+
+    .status-cancelled {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecdd3;
+    }
+
+    .status-refunded {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+    }
+
+    .action-group {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .btn-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        border: none;
+        transition: 0.2s;
+        background: white;
+        color: var(--admin-text-muted);
+        text-decoration: none;
+        border: 1px solid var(--admin-border);
+    }
+
+    .btn-icon:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .btn-icon-info:hover {
+        border-color: var(--admin-info);
+        color: var(--admin-info);
+        background: #e0f2fe;
+    }
+
+    .btn-icon-success:hover {
+        border-color: var(--admin-success);
+        color: var(--admin-success);
+        background: #d1fae5;
+    }
+
+    .btn-icon-warning:hover {
+        border-color: var(--admin-warning);
+        color: var(--admin-warning);
+        background: #fef3c7;
+    }
+
+    .btn-icon-danger:hover {
+        border-color: var(--admin-danger);
+        color: var(--admin-danger);
+        background: #fee2e2;
+    }
 </style>
 
 <div class="admin-container">
     <div class="row g-4">
-        
-        <?php 
-            $activeMenu = 'bookings'; 
-            include __DIR__ . '/../layouts/sidebar_manager.php'; 
+
+        <?php
+        $activeMenu = 'bookings';
+        include __DIR__ . '/../layouts/sidebar_manager.php';
         ?>
 
         <div class="col-lg-9">
             <div class="mb-4">
                 <h1 class="admin-title">Quản Lý Đơn Đặt Tour</h1>
-                <p class="text-muted mb-0 fw-medium">Phân loại chi tiết theo từng chuyến đi và quản lý bộ lọc chuyên sâu.</p>
+                <p class="text-muted mb-0 fw-medium">Phân loại chi tiết theo từng chuyến đi và quản lý bộ lọc chuyên
+                    sâu.</p>
             </div>
 
             <div class="filter-card">
@@ -103,8 +275,10 @@ if (!empty($bookings)) {
                     <div class="col-md-4">
                         <label class="filter-label">Tìm kiếm chung</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
-                            <input type="text" id="searchInput" class="form-control border-start-0 ps-0" placeholder="Mã đơn, Tên khách hàng..." onkeyup="filterData()">
+                            <span class="input-group-text bg-transparent border-end-0"><i
+                                    class="bi bi-search text-muted"></i></span>
+                            <input type="text" id="searchInput" class="form-control border-start-0 ps-0"
+                                placeholder="Mã đơn, Tên khách hàng..." onkeyup="filterData()">
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -121,7 +295,8 @@ if (!empty($bookings)) {
                         <label class="filter-label">Ngày đặt (Từ - Đến)</label>
                         <div class="input-group">
                             <input type="date" id="dateFrom" class="form-control" onchange="filterData()">
-                            <span class="input-group-text bg-light text-muted px-2 border-start-0 border-end-0">đến</span>
+                            <span
+                                class="input-group-text bg-light text-muted px-2 border-start-0 border-end-0">đến</span>
                             <input type="date" id="dateTo" class="form-control" onchange="filterData()">
                         </div>
                     </div>
@@ -130,25 +305,34 @@ if (!empty($bookings)) {
 
             <?php if (!empty($groupedBookings)): ?>
                 <div class="accordion tour-accordion" id="tourAccordion">
-                    
-                    <?php $index = 0; foreach ($groupedBookings as $key => $group): $index++; ?>
+
+                    <?php $index = 0;
+                    foreach ($groupedBookings as $key => $group):
+                        $index++; ?>
                         <div class="accordion-item group-container">
                             <h2 class="accordion-header" id="heading_<?= $index ?>">
-                                <button class="accordion-button <?= $index === 1 ? '' : 'collapsed' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_<?= $index ?>" aria-expanded="<?= $index === 1 ? 'true' : 'false' ?>">
+                                <button class="accordion-button <?= $index === 1 ? '' : 'collapsed' ?>" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#collapse_<?= $index ?>"
+                                    aria-expanded="<?= $index === 1 ? 'true' : 'false' ?>">
                                     <div class="w-100 pe-3">
                                         <div class="tour-group-title">
-                                            <i class="bi bi-map-fill text-primary"></i> <?= htmlspecialchars($group['tour_name']) ?>
-                                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill ms-2" style="font-size: 0.8rem; font-weight: 700; border: 1px solid #bae6fd;">
+                                            <i class="bi bi-map-fill text-primary"></i>
+                                            <?= htmlspecialchars($group['tour_name']) ?>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill ms-2"
+                                                style="font-size: 0.8rem; font-weight: 700; border: 1px solid #bae6fd;">
                                                 <?= $group['total_bookings'] ?> Đơn đặt
                                             </span>
                                         </div>
                                         <div class="tour-group-meta">
-                                            <span><i class="bi bi-calendar3 me-1 text-warning"></i> Khởi hành: <strong><?= date('d/m/Y', strtotime($group['start_date'])) ?></strong></span>
+                                            <span><i class="bi bi-calendar3 me-1 text-warning"></i> Khởi hành:
+                                                <strong><?= date('d/m/Y', strtotime($group['start_date'])) ?></strong></span>
                                         </div>
                                     </div>
                                 </button>
                             </h2>
-                            <div id="collapse_<?= $index ?>" class="accordion-collapse collapse <?= $index === 1 ? 'show' : '' ?>" data-bs-parent="#tourAccordion">
+                            <div id="collapse_<?= $index ?>"
+                                class="accordion-collapse collapse <?= $index === 1 ? 'show' : '' ?>"
+                                data-bs-parent="#tourAccordion">
                                 <div class="accordion-body p-0">
                                     <div class="table-responsive">
                                         <table class="table mb-0 align-middle">
@@ -164,26 +348,35 @@ if (!empty($bookings)) {
                                             </thead>
                                             <tbody>
                                                 <?php foreach ($group['items'] as $b): ?>
-                                                    <tr class="booking-row" 
-                                                        data-status="<?= $b['status'] ?>" 
+                                                    <tr class="booking-row" data-status="<?= $b['status'] ?>"
                                                         data-date="<?= date('Y-m-d', strtotime($b['booking_date'])) ?>">
-                                                        
+
                                                         <td class="ps-4">
-                                                            <div class="fw-bold text-primary search-target">#<?= $b['booking_id'] ?></div>
-                                                        </td>
-                                                        
-                                                        <td>
-                                                            <div class="fw-medium text-dark"><?= date('d/m/Y', strtotime($b['booking_date'])) ?></div>
-                                                            <div class="small text-muted"><?= date('H:i', strtotime($b['booking_date'])) ?></div>
+                                                            <div class="fw-bold text-primary search-target">#<?= $b['booking_id'] ?>
+                                                            </div>
                                                         </td>
 
                                                         <td>
-                                                            <div class="fw-bold text-dark search-target"><?= htmlspecialchars($b['customer_name']) ?></div>
-                                                            <div class="small text-muted mt-1"><i class="bi bi-people-fill me-1"></i><?= $b['number_of_people'] ?> khách</div>
+                                                            <div class="fw-medium text-dark">
+                                                                <?= date('d/m/Y', strtotime($b['booking_date'])) ?>
+                                                            </div>
+                                                            <div class="small text-muted">
+                                                                <?= date('H:i', strtotime($b['booking_date'])) ?>
+                                                            </div>
                                                         </td>
-                                                        
+
+                                                        <td>
+                                                            <div class="fw-bold text-dark search-target">
+                                                                <?= htmlspecialchars($b['customer_name']) ?>
+                                                            </div>
+                                                            <div class="small text-muted mt-1"><i
+                                                                    class="bi bi-people-fill me-1"></i><?= $b['number_of_people'] ?>
+                                                                khách</div>
+                                                        </td>
+
                                                         <td class="text-end">
-                                                            <div class="fw-bold text-danger"><?= number_format($b['total_price']) ?> đ</div>
+                                                            <div class="fw-bold text-danger"><?= number_format($b['total_price']) ?>
+                                                                đ</div>
                                                         </td>
 
                                                         <td class="text-center">
@@ -192,12 +385,16 @@ if (!empty($bookings)) {
                                                             <?php elseif ($b['status'] == 'confirmed' || $b['status'] == 'completed'): ?>
                                                                 <span class="badge-status status-confirmed">Đã duyệt</span>
                                                                 <?php if ($b['payment_status'] == 'pending'): ?>
-                                                                    <div class="mt-1"><span class="badge bg-warning text-dark" style="font-size:0.65rem;">Chưa thanh toán</span></div>
+                                                                    <div class="mt-1"><span class="badge bg-warning text-dark"
+                                                                            style="font-size:0.65rem;">Chưa thanh toán</span></div>
                                                                 <?php endif; ?>
                                                             <?php elseif ($b['status'] == 'cancelled'): ?>
                                                                 <span class="badge-status status-cancelled">Đã hủy</span>
                                                                 <?php if ($b['payment_status'] == 'paid'): ?>
-                                                                    <div class="mt-1"><span class="badge bg-danger shadow-sm" style="font-size:0.65rem;"><i class="bi bi-exclamation-circle me-1"></i>Cần hoàn tiền</span></div>
+                                                                    <div class="mt-1"><span class="badge bg-danger shadow-sm"
+                                                                            style="font-size:0.65rem;"><i
+                                                                                class="bi bi-exclamation-circle me-1"></i>Cần hoàn
+                                                                            tiền</span></div>
                                                                 <?php endif; ?>
                                                             <?php elseif ($b['status'] == 'refunded'): ?>
                                                                 <span class="badge-status status-refunded">Đã hoàn tiền</span>
@@ -206,22 +403,41 @@ if (!empty($bookings)) {
 
                                                         <td class="text-center pe-4">
                                                             <div class="action-group">
-                                                                <a href="manager.php?action=bookingDetail&id=<?= $b['booking_id'] ?>" class="btn-icon btn-icon-info" title="Xem chi tiết" data-bs-toggle="tooltip"><i class="bi bi-eye"></i></a>
-                                                                
+                                                                <a href="manager.php?action=bookingDetail&id=<?= $b['booking_id'] ?>"
+                                                                    class="btn-icon btn-icon-info" title="Xem chi tiết"
+                                                                    data-bs-toggle="tooltip"><i class="bi bi-eye"></i></a>
+
                                                                 <?php if ($b['status'] == 'pending'): ?>
-                                                                    <a href="manager.php?action=confirmBooking&id=<?= $b['booking_id'] ?>" class="btn-icon btn-icon-success" title="Duyệt đơn" data-bs-toggle="tooltip" onclick="return confirm('Xác nhận duyệt đơn này?')"><i class="bi bi-check-lg"></i></a>
+                                                                    <a href="manager.php?action=confirmBooking&id=<?= $b['booking_id'] ?>"
+                                                                        class="btn-icon btn-icon-success" title="Duyệt đơn"
+                                                                        data-bs-toggle="tooltip"
+                                                                        onclick="return confirm('Xác nhận duyệt đơn này?')"><i
+                                                                            class="bi bi-check-lg"></i></a>
                                                                 <?php endif; ?>
 
                                                                 <?php if (($b['status'] == 'pending' || $b['status'] == 'confirmed') && $b['payment_status'] == 'pending' && strtolower($b['payment_method']) == 'cod'): ?>
-                                                                    <a href="manager.php?action=confirmCash&id=<?= $b['booking_id'] ?>" class="btn-icon btn-icon-success" style="color: #059669; border-color: #059669;" title="Xác nhận đã thu tiền mặt" data-bs-toggle="tooltip" onclick="return confirm('Xác nhận đã thu tiền mặt từ khách hàng này?')"><i class="bi bi-cash-coin"></i></a>
+                                                                    <a href="manager.php?action=confirmCash&id=<?= $b['booking_id'] ?>"
+                                                                        class="btn-icon btn-icon-success"
+                                                                        style="color: #059669; border-color: #059669;"
+                                                                        title="Xác nhận đã thu tiền mặt" data-bs-toggle="tooltip"
+                                                                        onclick="return confirm('Xác nhận đã thu tiền mặt từ khách hàng này?')"><i
+                                                                            class="bi bi-cash-coin"></i></a>
                                                                 <?php endif; ?>
 
                                                                 <?php if ($b['status'] == 'cancelled' && $b['payment_status'] == 'paid'): ?>
-                                                                    <a href="manager.php?action=refundBooking&id=<?= $b['booking_id'] ?>" class="btn-icon btn-icon-warning" title="Xác nhận đã Hoàn tiền" data-bs-toggle="tooltip" onclick="return confirm('Bạn đã chuyển khoản trả lại tiền cho khách và muốn đóng trạng thái đơn này thành ĐÃ HOÀN TIỀN?')"><i class="bi bi-arrow-counterclockwise"></i></a>
+                                                                    <a href="manager.php?action=refundBooking&id=<?= $b['booking_id'] ?>"
+                                                                        class="btn-icon btn-icon-warning" title="Xác nhận đã Hoàn tiền"
+                                                                        data-bs-toggle="tooltip"
+                                                                        onclick="return confirm('Bạn đã chuyển khoản trả lại tiền cho khách và muốn đóng trạng thái đơn này thành ĐÃ HOÀN TIỀN?')"><i
+                                                                            class="bi bi-arrow-counterclockwise"></i></a>
                                                                 <?php endif; ?>
 
                                                                 <?php if ($b['status'] == 'pending' || $b['status'] == 'confirmed'): ?>
-                                                                    <a href="manager.php?action=cancelBooking&id=<?= $b['booking_id'] ?>" class="btn-icon btn-icon-danger" title="Hủy đơn" data-bs-toggle="tooltip" onclick="return confirm('CẢNH BÁO: Chắc chắn hủy đơn này? Hệ thống sẽ tự động hoàn lại chỗ trống cho tour.')"><i class="bi bi-x-lg"></i></a>
+                                                                    <a href="manager.php?action=cancelBooking&id=<?= $b['booking_id'] ?>"
+                                                                        class="btn-icon btn-icon-danger" title="Hủy đơn"
+                                                                        data-bs-toggle="tooltip"
+                                                                        onclick="return confirm('CẢNH BÁO: Chắc chắn hủy đơn này? Hệ thống sẽ tự động hoàn lại chỗ trống cho tour.')"><i
+                                                                            class="bi bi-x-lg"></i></a>
                                                                 <?php endif; ?>
                                                             </div>
                                                         </td>
@@ -234,15 +450,15 @@ if (!empty($bookings)) {
                             </div>
                         </div>
                     <?php endforeach; ?>
-                    
+
                 </div>
-                
+
                 <div id="noDataMsg" class="text-center py-5 bg-white rounded-4 border d-none">
                     <i class="bi bi-search fs-1 d-block mb-3 text-secondary opacity-25"></i>
                     <h5 class="fw-bold text-dark">Không tìm thấy kết quả phù hợp</h5>
                     <p class="mb-0 text-muted">Vui lòng thay đổi bộ lọc tìm kiếm hoặc từ khóa.</p>
                 </div>
-                
+
             <?php else: ?>
                 <div class="text-center py-5 bg-white rounded-4 border shadow-sm">
                     <i class="bi bi-inbox fs-1 d-block mb-3 text-secondary opacity-25"></i>
@@ -255,14 +471,24 @@ if (!empty($bookings)) {
     </div>
 </div>
 
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
+    document.addEventListener("DOMContentLoaded", function () {
+        // =========================================================
+        // 1. KHỞI TẠO TOOLTIP BOOTSTRAP
+        // =========================================================
+        function initTooltips() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+        initTooltips();
     });
 
+    // =========================================================
+    // 2. HÀM TÌM KIẾM VÀ LỌC DỮ LIỆU (Giữ nguyên của bạn)
+    // =========================================================
     function filterData() {
         const searchText = document.getElementById('searchInput').value.toLowerCase();
         const statusFilter = document.getElementById('statusFilter').value;
@@ -314,5 +540,49 @@ if (!empty($bookings)) {
             }
         }
     }
+
+    // =========================================================
+    // 3. LOGIC LẮNG NGHE REAL-TIME & CẬP NHẬT NGẦM (AJAX)
+    // =========================================================
+    const adminSocket = io("wss://travelvn-socketserver.onrender.com", {
+        transports: ["websocket", "polling"]
+    });
+
+    adminSocket.on("connect", () => {
+        console.log("🟢 Trang Quản Lý Đơn đã kết nối Socket!");
+    });
+
+    adminSocket.on("system_notification", function (data) {
+        console.log("👉 Admin nhận được biến động dữ liệu:", data);
+
+        // Khi có bất kỳ ai Đặt Tour Mới, Thanh Toán, hay Hủy Đơn...
+        // Chúng ta sẽ tải lại ngầm (fetch) bản HTML mới nhất của cái bảng này
+        fetch(window.location.href)
+            .then(response => response.text())
+            .then(html => {
+                let parser = new DOMParser();
+                let doc = parser.parseFromString(html, 'text/html');
+
+                // Tìm thẻ chứa toàn bộ danh sách Accordion ở bản HTML mới tải
+                let newAccordion = doc.querySelector('.tour-accordion');
+                let oldAccordion = document.querySelector('.tour-accordion');
+
+                if (newAccordion && oldAccordion) {
+                    // Cập nhật lại HTML bên trong (Mượt mà không F5)
+                    oldAccordion.innerHTML = newAccordion.innerHTML;
+
+                    // Kích hoạt lại Tooltip và áp dụng lại bộ lọc hiện tại (nếu Admin đang tìm kiếm dở)
+                    filterData();
+                    initTooltips();
+
+                    console.log("✅ Đã chèn ngầm đơn hàng mới vào danh sách!");
+                } else {
+                    // Trường hợp trang đang rỗng (chưa có tour nào) mà có người đặt, 
+                    // ta đành phải reload nhẹ 1 cái để trang vẽ cấu trúc gốc
+                    window.location.reload();
+                }
+            })
+            .catch(error => console.error("Lỗi khi tải ngầm dữ liệu:", error));
+    });
 </script>
 <?php include __DIR__ . '/../layouts/footer.php'; ?>
