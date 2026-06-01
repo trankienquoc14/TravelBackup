@@ -3,10 +3,10 @@ date_default_timezone_set('Asia/Ho_Chi_Minh');
 
 class Database
 {
-    private $host = "sql100.infinityfree.com";
-    private $db_name = "if0_41728842_travelvn";
-    private $username = "if0_41728842";
-    private $password = "ddEXbUD0grfbxWx";
+    private $host = "sql206.infinityfree.com";
+    private $db_name = "if0_42071264_tour";
+    private $username = "if0_42071264";
+    private $password = "lFVMB0jHjm4gSc";
     private $port = "3306";
 
     public function connect()
@@ -15,7 +15,7 @@ class Database
         try {
             // DSN chuẩn cho InfinityFree
             $dsn = "mysql:host=" . $this->host . ";port=" . $this->port . ";dbname=" . $this->db_name . ";charset=utf8mb4";
-            
+
             // Chỉ giữ lại các tùy chọn lỗi cơ bản, bỏ sạch SSL
             $options = array(
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
